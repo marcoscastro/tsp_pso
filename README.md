@@ -8,3 +8,5 @@ For the following graph (initial vertex is 0):
 the program prints:
 
 ![](https://github.com/marcoscastro/tsp_pso/blob/master/images/graph.png)
+
+Attention please: check the references (folder "references" for to understand the code).

@@ -3,9 +3,8 @@
 '''
 	Solution for Travelling Salesman Problem using PSO (Particle Swarm Optimization)
 	Discrete PSO for TSP
-	Author: Marcos Castro
 
-	Reference: 
+	References: 
 		http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.258.7026&rep=rep1&type=pdf
 		http://www.cs.mun.ca/~tinayu/Teaching_files/cs4752/Lecture19_new.pdf
 		http://www.swarmintelligence.org/tutorials.php
@@ -23,11 +22,12 @@ class Graph:
 	def __init__(self, initial_vertice):
 		self.edges = {} # dictionary of edges
 		self.vertices = set() # set of vertices
-		self.initial_vertice = initial_vertice
+		self.initial_vertice = initial_vertice # initial vertice
 
 
 	# adds a edge linking "src" in "dest" with a "cost"
 	def addEdge(self, src, dest, cost = 0):
+		# checks if the edge already exists
 		if not self.existsEdge(src, dest):
 			self.edges[(src, dest)] = cost
 			self.vertices.add(src)
@@ -92,8 +92,10 @@ class Graph:
 			print('Error: vertice %d not exists!' % self.initial_vertice)
 			sys.exit(1)
 
-		for i in range(max_size):
+		list_vertices.remove(self.initial_vertice)
+		list_vertices.insert(0, self.initial_vertice)
 
+		for i in range(max_size):
 			list_temp = list_vertices[1:]
 			random.shuffle(list_temp)
 			list_temp.insert(0, self.initial_vertice)
@@ -322,7 +324,8 @@ class PSO:
 
 if __name__ == "__main__":
 	
-	graph = Graph(initial_vertice=0)
+	# creates the Graph instance
+	graph = Graph(initial_vertice=1)
 
 	# This graph is in the folder "images" of the repository.
 	graph.addEdge(0, 1, 1);
@@ -346,10 +349,14 @@ if __name__ == "__main__":
 	graph.addEdge(3, 4, 2);
 	graph.addEdge(4, 3, 2);
 
+	# creates a PSO instance
 	pso = PSO(graph, iterations=1000, size_population=10, dimension_velocity=2, beta=1, alfa=1)
 
+	# runs the PSO algorithm
 	pso.run()
 
+	# shows the particles
 	pso.showsParticles()
 
+	# shows the global best particle
 	print('gbest: %s | cost: %d\n' % (pso.getGBest().getPBest(), pso.getGBest().getCostPBest()))

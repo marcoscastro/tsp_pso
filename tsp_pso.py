@@ -19,7 +19,7 @@ import random, sys, time, copy
 # class that represents a graph
 class Graph:
 
-	def __init__(self, initial_vertice):
+	def __init__(self, initial_vertice=0):
 		self.edges = {} # dictionary of edges
 		self.vertices = set() # set of vertices
 		self.initial_vertice = initial_vertice # initial vertice
@@ -325,7 +325,7 @@ class PSO:
 if __name__ == "__main__":
 	
 	# creates the Graph instance
-	graph = Graph(initial_vertice=1)
+	graph = Graph()
 
 	# This graph is in the folder "images" of the repository.
 	graph.addEdge(0, 1, 1);

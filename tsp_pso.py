@@ -111,6 +111,17 @@ class Graph:
 		return len(self.vertices)
 
 
+class CompleteGraph(Graph):
+
+	# generates a complete graph
+	def generates(self, amount_vertices):
+		for i in range(amount_vertices):
+			for j in range(amount_vertices):
+				if i != j:
+					weight = random.randint(1, 10)
+					self.addEdge(i, j, weight)
+
+
 # class that represents a particle
 class Particle:
 
@@ -126,8 +137,8 @@ class Particle:
 		self.cost_current_solution = cost
 		self.cost_pbest_solution = cost
 
-		# velocity of a particle is a sequence of swap operators
-		# example swap operator: (SO) = SO(1,2)
+		# velocity of a particle is a sequence of 4-tuple
+		# (1, 2, 1, 'beta') means SO(1,2), prabability 1 and compares with "beta"
 		self.velocity = []
 
 	# set pbest
@@ -205,7 +216,7 @@ class PSO:
 				random_n1 = random.randint(0, self.amount_vertices - 1)
 				random_n2 = random.randint(0, self.amount_vertices - 1)
 
-				swap_operator = [random_n1, random_n2]
+				swap_operator = [random_n1, random_n2, random.random(), 'beta']
 
 				if (swap_operator not in velocity_particle) and \
 					(swap_operator[::-1] not in velocity_particle) and (random_n1 != random_n2):
@@ -247,7 +258,6 @@ class PSO:
 
 		# for each time step (iteration)
 		for t in range(self.iterations):
-
 			# updates gbest (best particle of the population)
 			self.gbest = min(self.particles, key=attrgetter('cost_pbest_solution'))
 
@@ -260,55 +270,52 @@ class PSO:
 				new_velocity = temp_velocity[:] # new velocity
 				solution_particle = particle.getCurrentSolution()[:] # gets copy of the current solution of the particle
 
-				alfa_random = random.random() # gets a random number
-				# alfa is probability that all swap operators in swap sequence (pbest - x(t-1))
-				if alfa_random < self.alfa:
-					# generates all swap operators to calculate (pbest - x(t-1))
-					for i in range(self.amount_vertices):
-						if solution_particle[i] != solution_pbest[i]:
-							# generates swap operator
-							swap_operator = (i, solution_pbest.index(solution_particle[i]))
+				# generates all swap operators to calculate (pbest - x(t-1))
+				for i in range(self.amount_vertices):
+					if solution_particle[i] != solution_pbest[i]:
+						# generates swap operator
+						swap_operator = (i, solution_pbest.index(solution_particle[i]), 
+												self.alfa, 'alfa')
 
-							if swap_operator not in new_velocity:
-								new_velocity.append(swap_operator)
+						if swap_operator not in new_velocity:
+							new_velocity.append(swap_operator)
 
-							# append swap operator in the list of velocity
-							temp_velocity.append(swap_operator)
+						# append swap operator in the list of velocity
+						temp_velocity.append(swap_operator)
 
-							# makes the swap
-							aux = solution_pbest[swap_operator[0]]
-							solution_pbest[swap_operator[0]] = solution_pbest[swap_operator[1]]
-							solution_pbest[swap_operator[1]] = aux
+						# makes the swap
+						aux = solution_pbest[swap_operator[0]]
+						solution_pbest[swap_operator[0]] = solution_pbest[swap_operator[1]]
+						solution_pbest[swap_operator[1]] = aux
 
-				beta_random = random.random() # gets a random number
-				# beta is probability that all swap operators in swap sequence (gbest - x(t-1))
-				if beta_random < self.beta:
-					# generates all swap operators to calculate (gbest - x(t-1))
-					for i in range(self.amount_vertices):
-						if solution_particle[i] != solution_gbest[i]:
-							# generates swap operator
-							swap_operator = (i, solution_gbest.index(solution_particle[i]))
+				# generates all swap operators to calculate (gbest - x(t-1))
+				for i in range(self.amount_vertices):
+					if solution_particle[i] != solution_gbest[i]:
+						# generates swap operator
+						swap_operator = (i, solution_gbest.index(solution_particle[i]), 
+											self.beta, 'beta')
 
-							if swap_operator not in new_velocity:
-								new_velocity.append(swap_operator)
+						if swap_operator not in new_velocity:
+							new_velocity.append(swap_operator)
 
-							# append swap operator in the list of velocity
-							temp_velocity.append(swap_operator)
+						# append swap operator in the list of velocity
+						temp_velocity.append(swap_operator)
 
-							# makes the swap
-							aux = solution_gbest[swap_operator[0]]
-							solution_gbest[swap_operator[0]] = solution_gbest[swap_operator[1]]
-							solution_gbest[swap_operator[1]] = aux
+						# makes the swap
+						aux = solution_gbest[swap_operator[0]]
+						solution_gbest[swap_operator[0]] = solution_gbest[swap_operator[1]]
+						solution_gbest[swap_operator[1]] = aux
 
 				# updates new velocity
 				particle.setVelocity(new_velocity)
 
 				# generates new solution for particle
 				for swap_operator in temp_velocity:
-					# makes the swap
-					aux = solution_particle[swap_operator[0]]
-					solution_particle[swap_operator[0]] = solution_particle[swap_operator[1]]
-					solution_particle[swap_operator[1]] = aux
+					if random.random() <= swap_operator[2]:
+						# makes the swap
+						aux = solution_particle[swap_operator[0]]
+						solution_particle[swap_operator[0]] = solution_particle[swap_operator[1]]
+						solution_particle[swap_operator[1]] = aux
 
 				# checks if the solution is valid
 				if self.graph.isValidPathTSP(solution_particle):
@@ -325,7 +332,7 @@ class PSO:
 if __name__ == "__main__":
 	
 	# creates the Graph instance
-	graph = Graph()
+	graph = Graph(initial_vertice=0)
 
 	# This graph is in the folder "images" of the repository.
 	graph.addEdge(0, 1, 1);
@@ -360,3 +367,19 @@ if __name__ == "__main__":
 
 	# shows the global best particle
 	print('gbest: %s | cost: %d\n' % (pso.getGBest().getPBest(), pso.getGBest().getCostPBest()))
+
+	'''
+	# test with complete graphs
+	complete_graph = CompleteGraph(initial_vertice=0)
+	complete_graph.generates(amount_vertices=100)
+
+	pop = 20
+	dict_gbest = {}
+	while pop <= 80:
+		pso_complete_graph = PSO(complete_graph, iterations=100, size_population=pop, 
+										dimension_velocity=2, beta=1, alfa=0.9)
+		pso_complete_graph.run()
+		dict_gbest[pop] = pso_complete_graph.getGBest().getCostPBest()
+		pop *= 2
+		print(dict_gbest)
+	'''

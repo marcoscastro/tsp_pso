@@ -19,10 +19,10 @@ import random, sys, time, copy
 # class that represents a graph
 class Graph:
 
-	def __init__(self, initial_vertice=0):
+	def __init__(self, amount_vertices):
 		self.edges = {} # dictionary of edges
 		self.vertices = set() # set of vertices
-		self.initial_vertice = initial_vertice # initial vertice
+		self.amount_vertices = amount_vertices # amount of vertices
 
 
 	# adds a edge linking "src" in "dest" with a "cost"
@@ -45,41 +45,15 @@ class Graph:
 		for edge in self.edges:
 			print('%d linked in %d with cost %d' % (edge[0], edge[1], self.edges[edge]))
 
-
-	# checks if the "path" is a path of the TSP
-	def isValidPathTSP(self, path):
-		
-		len_vertices = len(self.vertices)
-
-		if len_vertices != len(set(path)) or path[0] != self.initial_vertice:
-			return False
-
-		for i in range(len_vertices - 1):
-			if not self.existsEdge(path[i], path[i+1]):
-				return False
-
-		# checks the last edge
-		if not self.existsEdge(path[len_vertices - 1], path[0]):
-			return False
-
-		return True
-
-
 	# returns total cost of the path
 	def getCostPath(self, path):
-
-		if not self.isValidPathTSP(path):
-			return -1
 		
 		total_cost = 0
-		len_vertices = len(self.vertices)
-
-		for i in range(len_vertices - 1):
+		for i in range(self.amount_vertices - 1):
 			total_cost += self.edges[(path[i], path[i+1])]
 
 		# add cost of the last edge
-		total_cost += self.edges[(path[len_vertices - 1], path[0])]
-
+		total_cost += self.edges[(path[self.amount_vertices - 1], path[0])]
 		return total_cost
 
 
@@ -88,35 +62,32 @@ class Graph:
 
 		random_paths, list_vertices = [], list(self.vertices)
 
-		if self.initial_vertice not in list_vertices:
-			print('Error: vertice %d not exists!' % self.initial_vertice)
+		initial_vertice = random.choice(list_vertices)
+		if initial_vertice not in list_vertices:
+			print('Error: initial vertice %d not exists!' % initial_vertice)
 			sys.exit(1)
 
-		list_vertices.remove(self.initial_vertice)
-		list_vertices.insert(0, self.initial_vertice)
+		list_vertices.remove(initial_vertice)
+		list_vertices.insert(0, initial_vertice)
 
 		for i in range(max_size):
 			list_temp = list_vertices[1:]
 			random.shuffle(list_temp)
-			list_temp.insert(0, self.initial_vertice)
+			list_temp.insert(0, initial_vertice)
 
-			if list_temp not in random_paths and self.isValidPathTSP(list_temp):
+			if list_temp not in random_paths:
 				random_paths.append(list_temp)
 
 		return random_paths
 
 
-	#  returns the amount of vertices
-	def getAmountVertices(self):
-		return len(self.vertices)
-
-
+# class that represents a complete graph
 class CompleteGraph(Graph):
 
 	# generates a complete graph
-	def generates(self, amount_vertices):
-		for i in range(amount_vertices):
-			for j in range(amount_vertices):
+	def generates(self):
+		for i in range(self.amount_vertices):
+			for j in range(self.amount_vertices):
 				if i != j:
 					weight = random.randint(1, 10)
 					self.addEdge(i, j, weight)
@@ -181,52 +152,34 @@ class Particle:
 	def getCostCurrentSolution(self):
 		return self.cost_current_solution
 
+	# removes all elements of the list velocity
+	def clearVelocity(self):
+		del self.velocity[:]
+
 
 # PSO algorithm
 class PSO:
 
-	def __init__(self, graph, iterations, size_population, dimension_velocity, beta=1, alfa=1):
+	def __init__(self, graph, iterations, size_population, beta=1, alfa=1):
 		self.graph = graph # the graph
 		self.iterations = iterations # max of iterations
 		self.size_population = size_population # size population
 		self.particles = [] # list of particles
-		self.dimension_velocity = dimension_velocity # dimension of the velocity
 		self.beta = beta # the probability that all swap operators in swap sequence (gbest - x(t-1))
 		self.alfa = alfa # the probability that all swap operators in swap sequence (pbest - x(t-1))
 
 		# initialized with a group of random particles (solutions)
 		solutions = self.graph.getRandomPaths(self.size_population)
 
+		# checks if exists any solution
 		if not solutions:
 			print('Initial population empty! Try run the algorithm again...')
 			sys.exit(1)
 
-		self.amount_vertices = self.graph.getAmountVertices()
-
 		# creates the particles and initialization of swap sequences in all the particles
 		for solution in solutions:
-
 			# creates a new particle
 			particle = Particle(solution=solution, cost=graph.getCostPath(solution))
-			
-			# velocity (sequences of swap operators) of the particle
-			velocity_particle = [] 
-
-			while True:
-				random_n1 = random.randint(0, self.amount_vertices - 1)
-				random_n2 = random.randint(0, self.amount_vertices - 1)
-
-				swap_operator = [random_n1, random_n2, random.random(), 'beta']
-
-				if (swap_operator not in velocity_particle) and \
-					(swap_operator[::-1] not in velocity_particle) and (random_n1 != random_n2):
-					velocity_particle.append(swap_operator)
-				if len(velocity_particle) == self.dimension_velocity:
-					break
-
-			# set the velocity of the particle
-			particle.setVelocity(velocity_particle)
-
 			# add the particle
 			self.particles.append(particle)
 
@@ -248,9 +201,9 @@ class PSO:
 
 		print('Showing particles...\n')
 		for particle in self.particles:
-			print('pbest: %s\t|\tcost pbest: %d\t|\tcurrent solution: %s\t|\tcost current solution: %d\t|\t velocity: %s' \
-				% (str(particle.getPBest()), particle.getCostPBest(), str(particle.getCurrentSolution()), 
-					particle.getCostCurrentSolution(), str(particle.getVelocity())))
+			print('pbest: %s\t|\tcost pbest: %d\t|\tcurrent solution: %s\t|\tcost current solution: %d' \
+				% (str(particle.getPBest()), particle.getCostPBest(), str(particle.getCurrentSolution()),
+							particle.getCostCurrentSolution()))
 		print('')
 
 
@@ -258,27 +211,24 @@ class PSO:
 
 		# for each time step (iteration)
 		for t in range(self.iterations):
+
 			# updates gbest (best particle of the population)
 			self.gbest = min(self.particles, key=attrgetter('cost_pbest_solution'))
 
 			# for each particle in the swarm
 			for particle in self.particles:
 
+				particle.clearVelocity() # cleans the speed of the particle
+				temp_velocity = []
 				solution_gbest = copy.copy(self.gbest.getPBest()) # gets solution of the gbest
 				solution_pbest = particle.getPBest()[:] # copy of the pbest solution
-				temp_velocity = particle.getVelocity()[:] # copy of velocity of the particle
-				new_velocity = temp_velocity[:] # new velocity
 				solution_particle = particle.getCurrentSolution()[:] # gets copy of the current solution of the particle
 
 				# generates all swap operators to calculate (pbest - x(t-1))
-				for i in range(self.amount_vertices):
+				for i in range(self.graph.amount_vertices):
 					if solution_particle[i] != solution_pbest[i]:
 						# generates swap operator
-						swap_operator = (i, solution_pbest.index(solution_particle[i]), 
-												self.alfa, 'alfa')
-
-						if swap_operator not in new_velocity:
-							new_velocity.append(swap_operator)
+						swap_operator = (i, solution_pbest.index(solution_particle[i]), self.alfa)
 
 						# append swap operator in the list of velocity
 						temp_velocity.append(swap_operator)
@@ -289,14 +239,10 @@ class PSO:
 						solution_pbest[swap_operator[1]] = aux
 
 				# generates all swap operators to calculate (gbest - x(t-1))
-				for i in range(self.amount_vertices):
+				for i in range(self.graph.amount_vertices):
 					if solution_particle[i] != solution_gbest[i]:
 						# generates swap operator
-						swap_operator = (i, solution_gbest.index(solution_particle[i]), 
-											self.beta, 'beta')
-
-						if swap_operator not in new_velocity:
-							new_velocity.append(swap_operator)
+						swap_operator = (i, solution_gbest.index(solution_particle[i]), self.beta)
 
 						# append swap operator in the list of velocity
 						temp_velocity.append(swap_operator)
@@ -306,8 +252,9 @@ class PSO:
 						solution_gbest[swap_operator[0]] = solution_gbest[swap_operator[1]]
 						solution_gbest[swap_operator[1]] = aux
 
-				# updates new velocity
-				particle.setVelocity(new_velocity)
+				
+				# updates velocity
+				particle.setVelocity(temp_velocity)
 
 				# generates new solution for particle
 				for swap_operator in temp_velocity:
@@ -316,70 +263,62 @@ class PSO:
 						aux = solution_particle[swap_operator[0]]
 						solution_particle[swap_operator[0]] = solution_particle[swap_operator[1]]
 						solution_particle[swap_operator[1]] = aux
+				
+				# updates the current solution
+				particle.setCurrentSolution(solution_particle)
+				# gets cost of the current solution
+				cost_current_solution = self.graph.getCostPath(solution_particle)
+				# updates the cost of the current solution
+				particle.setCostCurrentSolution(cost_current_solution)
 
-				# checks if the solution is valid
-				if self.graph.isValidPathTSP(solution_particle):
-					particle.setCurrentSolution(solution_particle) # updates the current solution
-					cost_current_solution = self.graph.getCostPath(solution_particle) # gets cost of the current solution
-					particle.setCostCurrentSolution(cost_current_solution) # updates the cost of the current solution
-
-					# checks if current solution is pbest solution
-					if cost_current_solution < particle.getCostPBest():
-						particle.setPBest(solution_particle)
-						particle.setCostPBest(cost_current_solution)
+				# checks if current solution is pbest solution
+				if cost_current_solution < particle.getCostPBest():
+					particle.setPBest(solution_particle)
+					particle.setCostPBest(cost_current_solution)
 		
 
 if __name__ == "__main__":
 	
 	# creates the Graph instance
-	graph = Graph(initial_vertice=0)
+	graph = Graph(amount_vertices=5)
 
 	# This graph is in the folder "images" of the repository.
-	graph.addEdge(0, 1, 1);
-	graph.addEdge(1, 0, 1);
-	graph.addEdge(0, 2, 3);
-	graph.addEdge(2, 0, 3);
-	graph.addEdge(0, 3, 4);
-	graph.addEdge(3, 0, 4);
-	graph.addEdge(0, 4, 5);
-	graph.addEdge(4, 0, 5);
-	graph.addEdge(1, 2, 1);
-	graph.addEdge(2, 1, 1);
-	graph.addEdge(1, 3, 4);
-	graph.addEdge(3, 1, 4);
-	graph.addEdge(1, 4, 8);
-	graph.addEdge(4, 1, 8);
-	graph.addEdge(2, 3, 5);
-	graph.addEdge(3, 2, 5);
-	graph.addEdge(2, 4, 1);
-	graph.addEdge(4, 2, 1);
-	graph.addEdge(3, 4, 2);
-	graph.addEdge(4, 3, 2);
+	graph.addEdge(0, 1, 1)
+	graph.addEdge(1, 0, 1)
+	graph.addEdge(0, 2, 3)
+	graph.addEdge(2, 0, 3)
+	graph.addEdge(0, 3, 4)
+	graph.addEdge(3, 0, 4)
+	graph.addEdge(0, 4, 5)
+	graph.addEdge(4, 0, 5)
+	graph.addEdge(1, 2, 1)
+	graph.addEdge(2, 1, 1)
+	graph.addEdge(1, 3, 4)
+	graph.addEdge(3, 1, 4)
+	graph.addEdge(1, 4, 8)
+	graph.addEdge(4, 1, 8)
+	graph.addEdge(2, 3, 5)
+	graph.addEdge(3, 2, 5)
+	graph.addEdge(2, 4, 1)
+	graph.addEdge(4, 2, 1)
+	graph.addEdge(3, 4, 2)
+	graph.addEdge(4, 3, 2)
 
 	# creates a PSO instance
-	pso = PSO(graph, iterations=1000, size_population=10, dimension_velocity=2, beta=1, alfa=1)
-
-	# runs the PSO algorithm
-	pso.run()
-
-	# shows the particles
-	pso.showsParticles()
+	pso = PSO(graph, iterations=100, size_population=10, beta=1, alfa=0.9)
+	pso.run() # runs the PSO algorithm
+	pso.showsParticles() # shows the particles
 
 	# shows the global best particle
 	print('gbest: %s | cost: %d\n' % (pso.getGBest().getPBest(), pso.getGBest().getCostPBest()))
 
 	'''
-	# test with complete graphs
-	complete_graph = CompleteGraph(initial_vertice=0)
-	complete_graph.generates(amount_vertices=100)
-
-	pop = 20
-	dict_gbest = {}
-	while pop <= 80:
-		pso_complete_graph = PSO(complete_graph, iterations=100, size_population=pop, 
-										dimension_velocity=2, beta=1, alfa=0.9)
-		pso_complete_graph.run()
-		dict_gbest[pop] = pso_complete_graph.getGBest().getCostPBest()
-		pop *= 2
-		print(dict_gbest)
+	# random graph
+	print('Random graph...')
+	random_graph = CompleteGraph(amount_vertices=20)
+	random_graph.generates()
+	pso_random_graph = PSO(random_graph, iterations=10000, size_population=10, beta=1, alfa=1)
+	pso_random_graph.run()
+	print('gbest: %s | cost: %d\n' % (pso_random_graph.getGBest().getPBest(), 
+					pso_random_graph.getGBest().getCostPBest()))
 	'''
